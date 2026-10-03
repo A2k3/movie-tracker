@@ -167,5 +167,6 @@ suggestBtn.addEventListener('click', function () {
   suggestionResult.textContent = `Watch: ${randomMovie.title}`;
 });
 
-// Initial load
-loadMovies();
+
+// Wait for Firebase to signal it's ready before loading data
+window.addEventListener('firebase-ready', loadMovies);

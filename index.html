@@ -37,7 +37,7 @@
 
 
   <!-- Firebase -->
-  <script type="module">
+    <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
       getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc
@@ -57,6 +57,9 @@
 
     window.db = db;
     window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc };
+
+    // NEW — tell the rest of the page Firebase is ready
+    window.dispatchEvent(new Event('firebase-ready'));
   </script>
 
   <script src="script.js"></script>
