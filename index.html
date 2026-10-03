@@ -35,6 +35,30 @@
 
   </div>
 
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD93UpZoTGh5NMesjJjP3KzCGBve4bUXsc",
+      authDomain: "movie-tracker-eb0ab.firebaseapp.com",
+      projectId: "movie-tracker-eb0ab",
+      storageBucket: "movie-tracker-eb0ab.firebasestorage.app",
+      messagingSenderId: "745708066749",
+      appId: "1:745708066749:web:cac524f4122b80377c24d4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.db = db;
+    window.fb = { collection, addDoc, getDocs, deleteDoc, updateDoc, doc };
+  </script>
+
   <script src="script.js"></script>
 </body>
 </html>

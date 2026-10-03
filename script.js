@@ -1,29 +1,27 @@
 const form = document.getElementById('movie-form');
 const movieList = document.getElementById('movie-list');
+const watchedList = document.getElementById('watched-list');
 const genreSelect = document.getElementById('genre-select');
 const suggestBtn = document.getElementById('suggest-btn');
 const suggestionResult = document.getElementById('suggestion-result');
-const watchedList = document.getElementById('watched-list');
 
+let movies = []; // now just an in-memory copy of what's in Firestore
 
-let movies = JSON.parse(localStorage.getItem('movies')) || [];
-let editIndex = null;
+const OMDB_API_KEY = 'YOUR_KEY_HERE';
 
-const OMDB_API_KEY = '4b7d9063'; // paste your real OMDb key here
+// Wait until the Firebase script above has run and attached window.db
+function getDB() {
+  return window.db;
+}
 
 async function fetchMovieData(rawTitle) {
-  // Check if the title has a year in parentheses, like "Couple Friendly (2026)"
   const yearMatch = rawTitle.match(/\((\d{4})\)/);
   const year = yearMatch ? yearMatch[1] : '';
-
-  // Remove the "(year)" part from the title itself before searching
   const cleanTitle = rawTitle.replace(/\s*\(\d{4}\)\s*/, '').trim();
 
   try {
     let url = `https://www.omdbapi.com/?t=${encodeURIComponent(cleanTitle)}&apikey=${OMDB_API_KEY}`;
-    if (year) {
-      url += `&y=${encodeURIComponent(year)}`;
-    }
+    if (year) url += `&y=${encodeURIComponent(year)}`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -44,6 +42,21 @@ async function fetchMovieData(rawTitle) {
   }
 }
 
+// Load all movies from Firestore into the `movies` array
+async function loadMovies() {
+  const db = getDB();
+  const { collection, getDocs } = window.fb;
+
+  const snapshot = await getDocs(collection(db, 'movies'));
+  movies = [];
+  snapshot.forEach((docSnap) => {
+    movies.push({ id: docSnap.id, ...docSnap.data() });
+  });
+
+  renderMovies();
+  updateGenreDropdown();
+}
+
 form.addEventListener('submit', async function (event) {
   event.preventDefault();
 
@@ -59,19 +72,19 @@ form.addEventListener('submit', async function (event) {
     watchedDate: null
   };
 
-  movies.push(movieData);
-  localStorage.setItem('movies', JSON.stringify(movies));
+  const db = getDB();
+  const { collection, addDoc } = window.fb;
+  await addDoc(collection(db, 'movies'), movieData);
 
   form.reset();
-  renderMovies();
-  updateGenreDropdown();
+  await loadMovies(); // reload fresh list from Firestore
 });
 
 function renderMovies() {
   movieList.innerHTML = '';
   watchedList.innerHTML = '';
 
-  movies.forEach(function (movie, index) {
+  movies.forEach(function (movie) {
     const card = document.createElement('div');
     card.className = 'movie-card';
 
@@ -81,7 +94,7 @@ function renderMovies() {
         <h3>${movie.title}</h3>
         <p class="genre-tag">${movie.genre}</p>
         <p class="watched-date">Watched on ${movie.watchedDate}</p>
-        <button onclick="deleteMovie(${index})">Delete</button>
+        <button onclick="deleteMovie('${movie.id}')">Delete</button>
       `;
       watchedList.appendChild(card);
     } else {
@@ -90,34 +103,34 @@ function renderMovies() {
         <h3>${movie.title}</h3>
         <p class="genre-tag">${movie.genre}</p>
         ${movie.summary ? `<p class="summary">${movie.summary}</p>` : ''}
-        <button onclick="markWatched(${index})">Watched</button>
-        <button onclick="deleteMovie(${index})">Delete</button>
+        <button onclick="markWatched('${movie.id}')">Watched</button>
+        <button onclick="deleteMovie('${movie.id}')">Delete</button>
       `;
       movieList.appendChild(card);
     }
   });
 }
 
-function markWatched(index) {
-  movies[index].watched = true;
-  movies[index].watchedDate = new Date().toLocaleDateString();
-  localStorage.setItem('movies', JSON.stringify(movies));
-  renderMovies();
+async function deleteMovie(id) {
+  const db = getDB();
+  const { doc, deleteDoc } = window.fb;
+  await deleteDoc(doc(db, 'movies', id));
+  await loadMovies();
 }
 
-function deleteMovie(index) {
-  movies.splice(index, 1);
-  localStorage.setItem('movies', JSON.stringify(movies));
-  renderMovies();
-  updateGenreDropdown();
+async function markWatched(id) {
+  const db = getDB();
+  const { doc, updateDoc } = window.fb;
+  await updateDoc(doc(db, 'movies', id), {
+    watched: true,
+    watchedDate: new Date().toLocaleDateString()
+  });
+  await loadMovies();
 }
 
-function editMovie(index) {
-  const movie = movies[index];
-  document.getElementById('title').value = movie.title;
-  editIndex = index;
-  form.querySelector('button[type="submit"]').textContent = 'Update Movie';
-}
+// Make these callable from the inline onclick= in the HTML
+window.deleteMovie = deleteMovie;
+window.markWatched = markWatched;
 
 function updateGenreDropdown() {
   const allGenres = movies.flatMap(movie => movie.genre.split(',').map(g => g.trim()));
@@ -154,5 +167,5 @@ suggestBtn.addEventListener('click', function () {
   suggestionResult.textContent = `Watch: ${randomMovie.title}`;
 });
 
-renderMovies();
-updateGenreDropdown();
+// Initial load
+loadMovies();
