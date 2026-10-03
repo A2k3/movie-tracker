@@ -7,7 +7,7 @@ const suggestionResult = document.getElementById('suggestion-result');
 
 let movies = []; // now just an in-memory copy of what's in Firestore
 
-const OMDB_API_KEY = 'YOUR_KEY_HERE';
+const OMDB_API_KEY = '4b7d9063';
 
 // Wait until the Firebase script above has run and attached window.db
 function getDB() {
